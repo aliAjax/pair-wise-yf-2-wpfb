@@ -1,12 +1,15 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { MapPin, Armchair, Info } from 'lucide-react';
 import { useBenchStore } from '@/store/useBenchStore';
+import { useRouteStore } from '@/store/useRouteStore';
 import { calculateComfortScore, getComfortColor } from '@/utils/comfort';
+import { stopOrderByBench } from '@/utils/routeRules';
 import type { Bench } from '@/types';
 
 export default function MapPage() {
   const { benches, initialize, initialized } = useBenchStore();
+  const { routes, initialize: initRoutes, initialized: routesReady } = useRouteStore();
   const navigate = useNavigate();
   const [hoveredBench, setHoveredBench] = useState<Bench | null>(null);
 
@@ -14,7 +17,12 @@ export default function MapPage() {
     if (!initialized) {
       initialize();
     }
-  }, [initialized, initialize]);
+    if (!routesReady) {
+      initRoutes();
+    }
+  }, [initialized, routesReady, initialize, initRoutes]);
+
+  const stopOrders = useMemo(() => stopOrderByBench(routes), [routes]);
 
   const getPositionStyle = (bench: Bench) => {
     const latRange = { min: 31.22, max: 31.25 };
@@ -61,7 +69,8 @@ export default function MapPage() {
             const position = getPositionStyle(bench);
             const comfortScore = calculateComfortScore(bench);
             const colorClass = getComfortColor(comfortScore);
-            
+            const stopOrder = stopOrders.get(bench.id);
+
             return (
               <button
                 key={bench.id}
@@ -81,6 +90,11 @@ export default function MapPage() {
                   <div className="absolute top-1 left-1/2 -translate-x-1/2">
                     <Armchair className="w-3 h-3 text-white" />
                   </div>
+                  {stopOrder !== undefined && (
+                    <div className="absolute -top-1.5 -right-1.5 min-w-[18px] min-h-[18px] rounded-full bg-ochre text-white text-[10px] font-medium flex items-center justify-center shadow-md">
+                      {stopOrder}
+                    </div>
+                  )}
                 </div>
 
                 {hoveredBench?.id === bench.id && (
@@ -97,6 +111,14 @@ export default function MapPage() {
                         {comfortScore}
                       </span>
                     </div>
+                    {stopOrder !== undefined && (
+                      <div className="flex items-center justify-between mt-1">
+                        <span className="text-xs text-ink-light">路线访问次序</span>
+                        <span className="text-sm font-medium text-ochre">
+                          第 {stopOrder} 处
+                        </span>
+                      </div>
+                    )}
                   </div>
                 )}
               </button>
@@ -124,6 +146,12 @@ export default function MapPage() {
               <div className="flex items-center gap-2">
                 <MapPin className="w-4 h-4 text-ink-light" fill="currentColor" />
                 <span className="text-xs text-ink-light">一般/较差</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="w-4 h-4 rounded-full bg-ochre text-white text-[10px] font-medium flex items-center justify-center">
+                  1
+                </span>
+                <span className="text-xs text-ink-light">未结束路线访问次序</span>
               </div>
             </div>
           </div>

@@ -85,3 +85,27 @@ export const TIME_PERIOD_ICONS: Record<TimePeriodType, string> = {
   evening: 'sunset',
   night: 'moon',
 };
+
+export type RouteStatus = 'active' | 'archived' | 'stopped';
+
+export interface RouteStop {
+  benchId: string;
+  stayMinutes: number;
+}
+
+export interface WalkingRoute {
+  id: string;
+  name: string;
+  /** 按访问次序排列 */
+  stops: RouteStop[];
+  status: RouteStatus;
+  createdAt: string;
+  updatedAt: string;
+  archivedAt?: string;
+}
+
+export const ROUTE_STATUS_LABELS: Record<RouteStatus, string> = {
+  active: '未结束',
+  archived: '已归档',
+  stopped: '停止接待',
+};
