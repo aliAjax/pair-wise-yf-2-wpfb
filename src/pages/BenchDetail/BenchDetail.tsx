@@ -14,6 +14,7 @@ import {
   Sunset,
   Moon,
   CloudSun,
+  Share2,
 } from 'lucide-react';
 import { useBenchStore } from '@/store/useBenchStore';
 import {
@@ -27,12 +28,14 @@ import {
 import type { TimePeriodType } from '@/types';
 import Rating from '@/components/Rating/Rating';
 import { calculateComfortScore, getComfortLevel, getComfortColor } from '@/utils/comfort';
+import { isBenchServing } from '@/utils/routeRules';
 
 export default function BenchDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { getBenchById, deleteBench, initialize, initialized } = useBenchStore();
+  const { getBenchById, deleteBench, setRouteServing, initialize, initialized } = useBenchStore();
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [showRestoreConfirm, setShowRestoreConfirm] = useState(false);
 
   useEffect(() => {
     if (!initialized) {
@@ -280,10 +283,54 @@ export default function BenchDetail() {
                 <span className="text-ink-light">时段记录</span>
                 <span className="text-deep-brown">{bench.experiences.length} 条</span>
               </div>
+              <div className="flex justify-between items-center">
+                <span className="text-ink-light">路线接待</span>
+                {isBenchServing(bench) ? (
+                  <span className="text-moss-green">正常接待</span>
+                ) : (
+                  <button
+                    onClick={() => setShowRestoreConfirm(true)}
+                    className="flex items-center gap-1 px-2 py-1 text-xs text-moss-green hover:bg-moss-green/10 rounded-md transition-colors"
+                  >
+                    <Share2 className="w-3.5 h-3.5" />
+                    已停止 · 恢复分享
+                  </button>
+                )}
+              </div>
             </div>
           </div>
         </div>
       </div>
+
+      {showRestoreConfirm && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
+          <div className="paper-texture rounded-xl shadow-paper-hover p-6 max-w-sm w-full fade-in">
+            <h3 className="font-serif text-lg font-semibold text-deep-brown mb-2">
+              恢复分享
+            </h3>
+            <p className="text-ink-light text-sm mb-6">
+              重新确认恢复「{bench.name}」的分享接待吗？恢复后可再次加入新路线。
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setShowRestoreConfirm(false)}
+                className="flex-1 px-4 py-2 text-sm text-deep-brown bg-warm-beige hover:bg-warm-beige/80 rounded-lg transition-colors"
+              >
+                再想想
+              </button>
+              <button
+                onClick={() => {
+                  setRouteServing(bench.id, true);
+                  setShowRestoreConfirm(false);
+                }}
+                className="flex-1 px-4 py-2 text-sm text-white bg-moss-green hover:bg-moss-light rounded-lg transition-colors"
+              >
+                确认恢复
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {showDeleteConfirm && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">

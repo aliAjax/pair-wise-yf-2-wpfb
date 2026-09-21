@@ -1,9 +1,10 @@
 import { useNavigate } from 'react-router-dom';
-import { MapPin, Clock, Volume2, Sun, Armchair } from 'lucide-react';
+import { MapPin, Clock, Volume2, Sun, Armchair, CirclePause } from 'lucide-react';
 import type { Bench } from '@/types';
 import { MATERIAL_LABELS, SHADE_LABELS, NOISE_LABELS, STAY_DURATION_LABELS } from '@/types';
 import Rating from '@/components/Rating/Rating';
 import { calculateComfortScore, getComfortLevel, getComfortColor } from '@/utils/comfort';
+import { isBenchServing } from '@/utils/routeRules';
 
 interface BenchCardProps {
   bench: Bench;
@@ -38,6 +39,13 @@ export default function BenchCard({ bench, index = 0 }: BenchCardProps) {
         <div className="absolute top-3 left-3 px-2 py-1 bg-white/80 backdrop-blur-sm rounded-full text-xs text-ink-light">
           {MATERIAL_LABELS[bench.material]}
         </div>
+
+        {!isBenchServing(bench) && (
+          <div className="absolute bottom-3 left-3 flex items-center gap-1 px-2 py-1 bg-red-500/90 backdrop-blur-sm rounded-full text-xs text-white">
+            <CirclePause className="w-3 h-3" />
+            停止接待
+          </div>
+        )}
       </div>
 
       <div className="p-4">

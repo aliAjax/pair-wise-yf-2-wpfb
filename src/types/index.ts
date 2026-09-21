@@ -28,6 +28,25 @@ export interface Bench {
   rating: number;
   review: string;
   experiences: BenchExperience[];
+  /** 路线接待状态：false 表示停止接待（缺省视为正常接待，兼容旧档案） */
+  routeServing?: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface RouteStop {
+  benchId: string;
+  stayMinutes: number;
+}
+
+export type WalkRouteStatus = 'active' | 'archived';
+
+export interface WalkRoute {
+  id: string;
+  name: string;
+  /** 按访问次序排列的途经点 */
+  stops: RouteStop[];
+  status: WalkRouteStatus;
   createdAt: string;
   updatedAt: string;
 }
@@ -84,4 +103,9 @@ export const TIME_PERIOD_ICONS: Record<TimePeriodType, string> = {
   afternoon: 'cloud-sun',
   evening: 'sunset',
   night: 'moon',
+};
+
+export const ROUTE_STATUS_LABELS: Record<WalkRouteStatus, string> = {
+  active: '未结束',
+  archived: '已归档',
 };

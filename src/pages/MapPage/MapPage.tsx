@@ -1,12 +1,15 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { MapPin, Armchair, Info } from 'lucide-react';
 import { useBenchStore } from '@/store/useBenchStore';
+import { useRouteStore } from '@/store/useRouteStore';
 import { calculateComfortScore, getComfortColor } from '@/utils/comfort';
+import { isBenchServing, getActiveRouteByBench } from '@/utils/routeRules';
 import type { Bench } from '@/types';
 
 export default function MapPage() {
   const { benches, initialize, initialized } = useBenchStore();
+  const { routes, draftStops, initialized: routesInitialized, initializeRoutes } = useRouteStore();
   const navigate = useNavigate();
   const [hoveredBench, setHoveredBench] = useState<Bench | null>(null);
 
@@ -14,7 +17,25 @@ export default function MapPage() {
     if (!initialized) {
       initialize();
     }
-  }, [initialized, initialize]);
+    if (!routesInitialized) {
+      initializeRoutes();
+    }
+  }, [initialized, routesInitialized, initialize, initializeRoutes]);
+
+  // 地图编号：打包草稿与未结束路线的访问次序
+  const numbering = useMemo(() => {
+    const map = new Map<string, { order: number; kind: 'draft' | 'active' }>();
+    const activeRouteByBench = getActiveRouteByBench(routes);
+    for (const [benchId] of activeRouteByBench) {
+      const route = activeRouteByBench.get(benchId)!;
+      const order = route.stops.findIndex((s) => s.benchId === benchId);
+      if (order >= 0) map.set(benchId, { order: order + 1, kind: 'active' });
+    }
+    draftStops.forEach((stop, index) => {
+      map.set(stop.benchId, { order: index + 1, kind: 'draft' });
+    });
+    return map;
+  }, [routes, draftStops]);
 
   const getPositionStyle = (bench: Bench) => {
     const latRange = { min: 31.22, max: 31.25 };
@@ -61,7 +82,9 @@ export default function MapPage() {
             const position = getPositionStyle(bench);
             const comfortScore = calculateComfortScore(bench);
             const colorClass = getComfortColor(comfortScore);
-            
+            const marker = numbering.get(bench.id);
+            const serving = isBenchServing(bench);
+
             return (
               <button
                 key={bench.id}
@@ -75,12 +98,26 @@ export default function MapPage() {
                   hoveredBench?.id === bench.id ? 'scale-125 z-10' : 'z-0'
                 } transition-transform duration-200`}>
                   <MapPin
-                    className={`w-8 h-8 ${colorClass} drop-shadow-md group-hover:drop-shadow-lg transition-all`}
+                    className={`w-8 h-8 ${serving ? colorClass : 'text-ink-light/40'} drop-shadow-md group-hover:drop-shadow-lg transition-all`}
                     fill="currentColor"
                   />
                   <div className="absolute top-1 left-1/2 -translate-x-1/2">
                     <Armchair className="w-3 h-3 text-white" />
                   </div>
+                  {marker && (
+                    <div
+                      className={`absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full text-white text-xs font-medium flex items-center justify-center shadow-md ${
+                        marker.kind === 'draft' ? 'bg-ochre' : 'bg-moss-green'
+                      }`}
+                    >
+                      {marker.order}
+                    </div>
+                  )}
+                  {!serving && (
+                    <div className="absolute -bottom-1.5 -right-1.5 px-1 rounded bg-red-500 text-white text-[10px] leading-4 shadow-md">
+                      停
+                    </div>
+                  )}
                 </div>
 
                 {hoveredBench?.id === bench.id && (
@@ -97,6 +134,19 @@ export default function MapPage() {
                         {comfortScore}
                       </span>
                     </div>
+                    {marker && (
+                      <div className="flex items-center justify-between mt-1">
+                        <span className="text-xs text-ink-light">
+                          {marker.kind === 'draft' ? '打包草稿' : '未结束路线'}
+                        </span>
+                        <span className={`text-xs font-medium ${marker.kind === 'draft' ? 'text-ochre' : 'text-moss-green'}`}>
+                          第 {marker.order} 站
+                        </span>
+                      </div>
+                    )}
+                    {!serving && (
+                      <p className="text-xs text-red-500 mt-1">已停止接待</p>
+                    )}
                   </div>
                 )}
               </button>
@@ -124,6 +174,18 @@ export default function MapPage() {
               <div className="flex items-center gap-2">
                 <MapPin className="w-4 h-4 text-ink-light" fill="currentColor" />
                 <span className="text-xs text-ink-light">一般/较差</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="w-4 h-4 rounded-full bg-ochre text-white text-[10px] flex items-center justify-center">1</span>
+                <span className="text-xs text-ink-light">打包草稿次序</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="w-4 h-4 rounded-full bg-moss-green text-white text-[10px] flex items-center justify-center">1</span>
+                <span className="text-xs text-ink-light">未结束路线次序</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="px-1 rounded bg-red-500 text-white text-[10px] leading-4">停</span>
+                <span className="text-xs text-ink-light">停止接待</span>
               </div>
             </div>
           </div>
